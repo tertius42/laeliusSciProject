@@ -31,8 +31,8 @@ const
 var
 	i: byte;
 	dir: String;
-	t: byte;
 	isUnix: boolean;
+	
 BEGIN
 	clrscr;//clear the terminal
 	
@@ -49,6 +49,7 @@ BEGIN
   writeln('This program comes with ABSOLUTELY NO WARRANTY.');
 	writeln('This is free software, and you are welcome to redistribute it');
   writeln('under certain conditons.');
+	
 	
 	
 END.
