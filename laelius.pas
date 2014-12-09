@@ -29,9 +29,11 @@ uses crt, sysutils;
 const
 	ver = 0.1;
 var
-	i: byte;
+	i: integer;
 	dir: String;
 	isUnix: boolean;
+	aFile: file;
+	data: array [0..4095] of byte;
 	
 BEGIN
 	clrscr;//clear the terminal
@@ -50,6 +52,28 @@ BEGIN
 	writeln('This is free software, and you are welcome to redistribute it');
   writeln('under certain conditons.');
 	
+		Assign(aFile, 'test');
+	try
+			Reset(aFile, 4096);
+	except
+		on E: EInOutError do
+			writeln('File could not be accessed. Details: ' + E.ClassName + '/' + E.Message);
+	end;
 	
+	try
+		repeat
+			BlockRead(aFile, data, SizeOf(data))
+		until (eof(aFile));
+	except
+		on E: EInOutError do
+		begin
+			writeln('Error. Details: ' + E.ClassName + '/' + E.Message);
+			Close(aFile);
+		end;
+	end;
 	
+	for i := 0 to SizeOf(data) do
+	begin
+		write(data[i]);
+	end;
 END.
