@@ -1,4 +1,4 @@
-{
+(*
    delete.pas
    
    Copyright 2014 Louis Thomas <lthomas@mail.swvgs.us>
@@ -19,7 +19,7 @@
    MA 02110-1301, USA.
    
    
-}
+*)
 
 
 program delete;

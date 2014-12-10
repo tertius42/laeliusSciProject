@@ -28,7 +28,7 @@ program laelius;
 uses crt, sysutils;
 const
 	ver = 0.1;
-	datLen = 162815;
+	datLen = 13;
 var
 	i, j: integer;
 	dir, buffer: String;
@@ -55,7 +55,7 @@ BEGIN
   writeln('under certain conditons.');
 	
 	try
-		Assign(aFile, 'delete');
+		Assign(aFile,'test');
 		Reset(aFile, 1);
 	except
 		on E: EInOutError do
@@ -75,21 +75,21 @@ BEGIN
 	end;
 	
 	try
-		Assign(aText, 'out');
+		Assign(aText, dir + 'out');
 		Rewrite(aText);
 		
-		for i := 0 to SizeOf(data) do
+		for i := 0 to datLen do
 		begin
-			if (i + 1) MOD 256 = 0 then
+			if (i) MOD 256 = 0 then
 			begin
 				buffer:='';
 				for j := i to i + 256 do
 				begin
 					if data[j] <> 0 then
 						buffer := buffer + chr(data[j]);
+					write(chr(data[j]));
 				end;
-				writeln(aText, buffer);
-				writeln(buffer);
+				write(aText, buffer);
 			end;
 		end;
 		
@@ -100,4 +100,5 @@ BEGIN
 			writeln('ERROR: Details: ' + E.ClassName + ':' + E.Message);
 		end
 	end;
+	writeln('Done...');
 END.
