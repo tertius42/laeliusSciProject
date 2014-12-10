@@ -28,12 +28,14 @@ program laelius;
 uses crt, sysutils;
 const
 	ver = 0.1;
+	datLen = 162815;
 var
-	i: integer;
-	dir: String;
+	i, j: integer;
+	dir, buffer: String;
 	isUnix: boolean;
 	aFile: file;
-	data: array [0..4095] of byte;
+	data: array [0..datLen] of byte;
+	aText: text;
 	
 BEGIN
 	clrscr;//clear the terminal
@@ -52,12 +54,12 @@ BEGIN
 	writeln('This is free software, and you are welcome to redistribute it');
   writeln('under certain conditons.');
 	
-		Assign(aFile, 'test');
 	try
-			Reset(aFile, 4096);
+		Assign(aFile, 'delete');
+		Reset(aFile, 1);
 	except
 		on E: EInOutError do
-			writeln('File could not be accessed. Details: ' + E.ClassName + '/' + E.Message);
+			writeln('File could not be accessed. Details: ' + E.ClassName + ':' + E.Message);
 	end;
 	
 	try
@@ -67,13 +69,35 @@ BEGIN
 	except
 		on E: EInOutError do
 		begin
-			writeln('Error. Details: ' + E.ClassName + '/' + E.Message);
+			writeln('Error. Details: ' + E.ClassName + ':' + E.Message);
 			Close(aFile);
 		end;
 	end;
 	
-	for i := 0 to SizeOf(data) do
-	begin
-		write(data[i]);
+	try
+		Assign(aText, 'out');
+		Rewrite(aText);
+		
+		for i := 0 to SizeOf(data) do
+		begin
+			if (i + 1) MOD 256 = 0 then
+			begin
+				buffer:='';
+				for j := i to i + 256 do
+				begin
+					if data[j] <> 0 then
+						buffer := buffer + chr(data[j]);
+				end;
+				writeln(aText, buffer);
+				writeln(buffer);
+			end;
+		end;
+		
+		Close(aText);
+	except
+		on E: EInOutError do
+		begin
+			writeln('ERROR: Details: ' + E.ClassName + ':' + E.Message);
+		end
 	end;
 END.
