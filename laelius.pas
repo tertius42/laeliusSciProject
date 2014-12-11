@@ -27,15 +27,18 @@ program laelius;
 {$mode objfpc}
 
 uses crt, sysutils;
+type
+	dataContainer = array [0..0] of byte;
 const
 	ver = 0.1;
+	//datLen = 158720;
 var
 	i, j: integer; //counters
-	dir, buffer: String;
+	dir: String;
 	isUnix: boolean; //probably important
 	aFile: file;
-	data: array of byte;
-	datLen: longint;
+	data: ^dataContainer;
+	datLen,fileLen: longint;
 	aText: text;
 	
 BEGIN
@@ -58,57 +61,62 @@ BEGIN
 	try //assign file to test binary readings
 		Assign(aFile,'test');
 		Reset(aFile, 1);
-		datLen := FileSize(aFile);
-		writeln('File size: ', datLen, ' bytes'); //report size of file in bytes
+		if FileSize(aFile) < 536870912 then //don't want to allocate more than 512MB of memory!
+			datLen := (FileSize(aFile) DIV 1024 + 1) * 1024
+		else datLen := 536870912;
+		fileLen := FileSize(aFile);
+		//datLen := 13;
+		writeln('File size: ', FileSize(aFile), ' bytes'); //report size of file in bytes
 	except
 		on E: EInOutError do //report erros if any
 			writeln('File could not be accessed. Details: ' + E.ClassName + ':' + E.Message);
 	end;
 	
 	try
-		SetLength(data, datLen + 1);
-		writeln('Size of data: ', Length(data));
-		for i := 0 to Length(data) do
-		begin
-			writeln(i);
-			data[i] := 0;
-		end;
+		data:=GetMem(datLen);//dynamically resize array
+		//FillByte(data^,datLen,0);
+		writeln(datLen);
+		writeln('Length of data: ', Length(data^));
+		writeln('Size of data: ', SizeOf(data));
 	except
 		on E: EAccessViolation do
-			writeln('Error. Details: ' + E.ClassName + ':' + E.Message);
+			writeln('Error. Details: ' + E.ClassName + ':' + E.Message)
 	end;
 	
 	try
-		repeat //try to read file
-			BlockRead(aFile, data, SizeOf(data))
-		until (eof(aFile)); //to ending (doesn't really work with binary)
+		repeat
+			BlockRead(aFile, data^, datLen, j);
+			//write(j);
+		until j = 0;
 	except
 		on E: EInOutError do //report errors if able to
 		begin
 			writeln('Error. Details: ' + E.ClassName + ':' + E.Message);
-			Close(aFile); //and close file?
-		end;
+			Close(aFile) //and close file?
+		end
 	end;
-		writeln(data[0]);
 	
 	try
 		Assign(aText, 'out');
-		Reset(aText);
+		Rewrite(aText);
 		
 		try
 			for i := 0 to datLen do
 			begin
-				writeln(i);
-				writeln(data[0]);
-					if data[i] <> 0 then
-						write(aText, chr(data[i]));
+				//if data^[i] <> 0 then
+				if i <= fileLen then
+				begin
+					write(aText, chr(data^[i]));
+					write(chr(data^[i]));
+				end;
 			end
 		except
 			on E: EAccessViolation do
+			begin
 				writeln('Error. Details: ' + E.ClassName + ':' + E.Message);
+				Close(aText);
+			end;
 		end;
-		
-		Close(aText);
 	except 
 		on E: EInOutError do
 		begin
