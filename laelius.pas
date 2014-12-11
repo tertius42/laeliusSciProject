@@ -24,17 +24,18 @@
 
 
 program laelius;
+{$mode objfpc}
 
 uses crt, sysutils;
 const
 	ver = 0.1;
-	datLen = 13;
 var
-	i, j: integer;
+	i, j: integer; //counters
 	dir, buffer: String;
-	isUnix: boolean;
+	isUnix: boolean; //probably important
 	aFile: file;
-	data: array [0..datLen] of byte;
+	data: array of byte;
+	datLen: longint;
 	aText: text;
 	
 BEGIN
@@ -54,51 +55,104 @@ BEGIN
 	writeln('This is free software, and you are welcome to redistribute it');
   writeln('under certain conditons.');
 	
-	try
+	try //assign file to test binary readings
 		Assign(aFile,'test');
 		Reset(aFile, 1);
+		datLen := FileSize(aFile);
+		writeln('File size: ', datLen, ' bytes'); //report size of file in bytes
 	except
-		on E: EInOutError do
+		on E: EInOutError do //report erros if any
 			writeln('File could not be accessed. Details: ' + E.ClassName + ':' + E.Message);
 	end;
 	
 	try
-		repeat
-			BlockRead(aFile, data, SizeOf(data))
-		until (eof(aFile));
+		SetLength(data, datLen + 1);
+		writeln('Size of data: ', Length(data));
+		for i := 0 to Length(data) do
+		begin
+			writeln(i);
+			data[i] := 0;
+		end;
 	except
-		on E: EInOutError do
+		on E: EAccessViolation do
+			writeln('Error. Details: ' + E.ClassName + ':' + E.Message);
+	end;
+	
+	try
+		repeat //try to read file
+			BlockRead(aFile, data, SizeOf(data))
+		until (eof(aFile)); //to ending (doesn't really work with binary)
+	except
+		on E: EInOutError do //report errors if able to
 		begin
 			writeln('Error. Details: ' + E.ClassName + ':' + E.Message);
-			Close(aFile);
+			Close(aFile); //and close file?
 		end;
 	end;
 	
 	try
-		Assign(aText, dir + 'out');
-		Rewrite(aText);
+		Assign(aText, 'out');
+		Reset(aText);
 		
-		for i := 0 to datLen do
-		begin
-			if (i) MOD 256 = 0 then
+		try
+			for i := 0 to datLen do
 			begin
-				buffer:='';
-				for j := i to i + 256 do
-				begin
-					if data[j] <> 0 then
-						buffer := buffer + chr(data[j]);
-					write(chr(data[j]));
-				end;
-				write(aText, buffer);
-			end;
+				writeln(i);
+				writeln(data[0]);
+					if data[i] <> 0 then
+						write(aText, chr(data[i]));
+			end
+		except
+			on E: EAccessViolation do
+				writeln('Error. Details: ' + E.ClassName + ':' + E.Message);
 		end;
 		
 		Close(aText);
-	except
+	except 
 		on E: EInOutError do
+		begin
+			writeln('Error. Details: ' + E.ClassName + ':' + E.Message);
+		end
+	end;
+	
+	(*try //try to write new file (from output of the test file)
+		Assign(aText, dir + 'out');
+		Rewrite(aText);
+		
+		for i := 0 to Length(data) do
+		begin
+		
+			if i MOD  = 0 then
+			begin
+				buffer:=''; //clear buffer
+				
+				for j := i to i + 256 do
+				begin
+					writeln(j);//debug
+					
+					try
+						if data[j] <> 0 then
+							buffer := buffer + chr(data[j]); //parse bytes to a character, then add to buffer
+						write(chr(data[j])); //write parse to screen
+					except
+						on E: EAccessViolation do
+							writeln('Error. Details: ' + E.ClassName + ':' + E.Message);
+					end; //try
+					
+				end; //for j
+				
+				write(aText, buffer); //write buffer to file
+			end; //if i MOD 256
+			
+		end; //for i to datLen
+		
+		Close(aText);
+	except
+		on E: EInOutError do //on error, display details
 		begin
 			writeln('ERROR: Details: ' + E.ClassName + ':' + E.Message);
 		end
-	end;
-	writeln('Done...');
+	end;*)
+	
+	writeln('Done...'); //Anounce ending of program
 END.
