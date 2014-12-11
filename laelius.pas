@@ -89,6 +89,7 @@ BEGIN
 			Close(aFile); //and close file?
 		end;
 	end;
+		writeln(data[0]);
 	
 	try
 		Assign(aText, 'out');
