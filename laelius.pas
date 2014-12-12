@@ -59,14 +59,14 @@ BEGIN
   writeln('under certain conditons.');
 	
 	try //assign file to test binary readings
-		Assign(aFile,'test');
+		Assign(aFile,'delete');
 		Reset(aFile, 1);
 		if FileSize(aFile) < 536870912 then //don't want to allocate more than 512MB of memory!
 			datLen := (FileSize(aFile) DIV 1024 + 1) * 1024
 		else datLen := 536870912;
 		fileLen := FileSize(aFile);
 		//datLen := 13;
-		writeln('File size: ', FileSize(aFile), ' bytes'); //report size of file in bytes
+		writeln('File size: ', fileLen, ' bytes'); //report size of file in bytes
 	except
 		on E: EInOutError do //report erros if any
 			writeln('File could not be accessed. Details: ' + E.ClassName + ':' + E.Message);
@@ -104,25 +104,26 @@ BEGIN
 			for i := 0 to datLen do
 			begin
 				//if data^[i] <> 0 then
-				if i <= fileLen then
+				if i < fileLen then
 				begin
 					write(aText, chr(data^[i]));
-					write(chr(data^[i]));
-				end;
+					write(chr(data^[i]))
+				end
 			end
 		except
 			on E: EAccessViolation do
 			begin
-				writeln('Error. Details: ' + E.ClassName + ':' + E.Message);
-				Close(aText);
-			end;
-		end;
+				writeln('Error. Details: ' + E.ClassName + ':' + E.Message)
+			end
+		end
 	except 
 		on E: EInOutError do
 		begin
-			writeln('Error. Details: ' + E.ClassName + ':' + E.Message);
+			writeln('Error. Details: ' + E.ClassName + ':' + E.Message)
 		end
 	end;
+	
+	Close(aText);
 	
 	(*try //try to write new file (from output of the test file)
 		Assign(aText, dir + 'out');
