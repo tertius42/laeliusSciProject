@@ -1,48 +1,47 @@
 {
 	laelius.pas
-
+	
 	Copyright 2014 Louis Thomas <lthomas@mail.swvgs.us>
-	Sponser: Mr. Rick Fisher
-
+	Sponsor: Mr. Rick Fisher
+	
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation; either version 2 of the License, or
 	(at your option) any later version.
-
+	
 	This program is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
-
+	
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 	MA 02110-1301, USA.
-
-	Purpose: Essentially, look for a virus in a file.
+	
+	Purpose: Scan a file and see if it is (or isn't) malicious.
 }
 
 
 program laelius;
 {$mode objfpc}
 
-uses crt, sysutils;
+uses crt,sysutils;
 type
 	dataContainer = array [0..0] of byte;
 const
-	ver = 0.1;
-	//datLen = 158720;
+	version = '0.1.1';
 var
-	i, j: integer; //counters
-	dir: String;
-	isUnix: boolean; //probably important
-	aFile: file;
 	data: ^dataContainer;
-	datLen,fileLen: longint;
+	i, datLen, filLen, returned: longint;
+	dir, name: string;
+	isUnix, isGreat: boolean;
+	aFile: file;
 	aText: text;
-	
 BEGIN
 	clrscr;//clear the terminal
+	
+	isGreat := true;
 	
 	dir := getCurrentDir; //get directory and determine OS
 	if Copy(dir,1,1) = '/' then
@@ -53,116 +52,77 @@ BEGIN
 		dir := dir + '/'
 	else dir := dir + '\';
 	
-	writeln('Laelius ',ver:2:1); //announce program and version
+	writeln('Laelius Verison: ' + version); //Announce program and version
   writeln('This program comes with ABSOLUTELY NO WARRANTY.');
 	writeln('This is free software, and you are welcome to redistribute it');
   writeln('under certain conditons.');
-	
-	try //assign file to test binary readings
-		Assign(aFile,'delete');
-		Reset(aFile, 1);
-		if FileSize(aFile) < 536870912 then //don't want to allocate more than 512MB of memory!
-			datLen := (FileSize(aFile) DIV 1024 + 1) * 1024
-		else datLen := 536870912;
-		fileLen := FileSize(aFile);
-		//datLen := 13;
-		writeln('File size: ', fileLen, ' bytes'); //report size of file in bytes
-	except
-		on E: EInOutError do //report erros if any
-			writeln('File could not be accessed. Details: ' + E.ClassName + ':' + E.Message);
-	end;
-	
-	try
-		data:=GetMem(datLen);//dynamically resize array
-		//FillByte(data^,datLen,0);
-		writeln(datLen);
-		writeln('Length of data: ', Length(data^));
-		writeln('Size of data: ', SizeOf(data));
-	except
-		on E: EAccessViolation do
-			writeln('Error. Details: ' + E.ClassName + ':' + E.Message)
-	end;
-	
-	try
-		repeat
-			BlockRead(aFile, data^, datLen, j);
-			//write(j);
-		until j = 0;
-	except
-		on E: EInOutError do //report errors if able to
-		begin
-			writeln('Error. Details: ' + E.ClassName + ':' + E.Message);
-			Close(aFile) //and close file?
-		end
-	end;
-	
-	try
-		Assign(aText, 'out');
-		Rewrite(aText);
-		
-		try
-			for i := 0 to datLen do
-			begin
-				//if data^[i] <> 0 then
-				if i < fileLen then
-				begin
-					write(aText, chr(data^[i]));
-					write(chr(data^[i]))
-				end
-			end
-		except
-			on E: EAccessViolation do
-			begin
-				writeln('Error. Details: ' + E.ClassName + ':' + E.Message)
-			end
-		end
-	except 
+  
+  if ParamCount = 0 then
+  begin
+		write('Name (dir optional) of file: ');
+		readln(name)
+  end
+  else name := ParamStr(0);
+  
+  try
+		Assign(aFile, name);
+		Reset(aFile,1);
+  except
 		on E: EInOutError do
 		begin
-			writeln('Error. Details: ' + E.ClassName + ':' + E.Message)
+			writeln('Error. details: ' + E.ClassName + ':' + E.Message);
+			isGreat := false //don't use the rest of the program if this is false.
 		end
-	end;
-	
-	Close(aText);
-	
-	(*try //try to write new file (from output of the test file)
-		Assign(aText, dir + 'out');
-		Rewrite(aText);
+  end;
+  
+  if isGreat then //pretty much the rest of the project will be inside of this conditional
+  begin
+		datLen := FileSize(aFile);
+		if datLen > 536870912 then //half a GiB is too much!
+			datLen := 536870912;
 		
-		for i := 0 to Length(data) do
-		begin
+		filLen := FileSize(aFile);
 		
-			if i MOD  = 0 then
+		try
+			data := GetMem(datLen);
+		except
+			on E: EAccessViolation do
+				writeln('Error. details: ' + E.ClassName + ':' + E.Message)
+		end;
+		
+		try
+			if datLen < 536870912 then //okay to use RAM if datLen is less than .5 GiB
+				repeat
+					BlockRead(aFile,data^,datLen,returned)//read
+				until returned < datLen//until data read is less than data per BlockRead
+			else
 			begin
-				buffer:=''; //clear buffer
+				Assign(aText,'out'); //we need to store the (large) file into a buffer on the hard disk
+				Rewrite(aText); 
 				
-				for j := i to i + 256 do
-				begin
-					writeln(j);//debug
-					
-					try
-						if data[j] <> 0 then
-							buffer := buffer + chr(data[j]); //parse bytes to a character, then add to buffer
-						write(chr(data[j])); //write parse to screen
-					except
-						on E: EAccessViolation do
-							writeln('Error. Details: ' + E.ClassName + ':' + E.Message);
-					end; //try
-					
-				end; //for j
+				repeat
+					BlockRead(aFile,data^,datLen,returned);
+					for i := 0 to returned do
+						write(aText, data^[i])
+				until returned < datLen;
 				
-				write(aText, buffer); //write buffer to file
-			end; //if i MOD 256
-			
-		end; //for i to datLen
+				Close(aText)
+			end
+		except
+			on E: EInOutError do //errors
+				writeln('Error. details: ' + E.ClassName + ':' + E.Message);
+			on E: EAccessViolation do
+				writeln('Error. details: ' + E.ClassName + ':' + E.Message)
+		end;
 		
-		Close(aText);
-	except
-		on E: EInOutError do //on error, display details
-		begin
-			writeln('ERROR: Details: ' + E.ClassName + ':' + E.Message);
-		end
-	end;*)
-	
-	writeln('Done...'); //Anounce ending of program
+		Close(aFile);
+		
+		//for debugging and seeing if it worked...
+		for i := 0 to filLen do
+			write(chr(data^[i]))
+		
+		//Just a fun-fact, Length(data^) returns 1, so we have to keep track of its length with datLen
+		
+  end
+  
 END.
