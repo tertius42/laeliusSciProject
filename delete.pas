@@ -23,11 +23,12 @@
 
 
 program delete;
-var
-	t: text;
+{var
+	t: text;}
 BEGIN
-	Assign(t, 'howdy!');
-	writeln('to the Alamo!');
-	Erase(t);
+	{writeln('to the Alamo once!');
+	//Erase(t);
+	writeln('to the Alamo twice!');
+	writeln('and thrice!')}
 END.
 

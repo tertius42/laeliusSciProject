@@ -90,8 +90,8 @@ BEGIN
 				writeln('Error. details: ' + E.ClassName + ':' + E.Message)
 		end;
 		
-		try
-			if datLen < 536870912 then //okay to use RAM if datLen is less than .5 GiB
+		try					//for now, we definitely want another file
+			if datLen < 0 then //okay to use RAM if datLen is less than .5 GiB
 				repeat
 					BlockRead(aFile,data^,datLen,returned)//read
 				until returned < datLen//until data read is less than data per BlockRead
@@ -103,7 +103,7 @@ BEGIN
 				repeat
 					BlockRead(aFile,data^,datLen,returned);
 					for i := 0 to returned do
-						write(aText, data^[i])
+						write(aText, chr(data^[i]))
 				until returned < datLen;
 				
 				Close(aText)
@@ -122,6 +122,8 @@ BEGIN
 			write(chr(data^[i]))
 		
 		//Just a fun-fact, Length(data^) returns 1, so we have to keep track of its length with datLen
+		
+		
 		
   end
   
