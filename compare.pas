@@ -36,7 +36,7 @@ var
 	i,j: longint;
 	returned: longint;
 	aText: text;
-	greater: byte;
+	index: array [0..1] of byte;
 	name: array [0..1] of string;
 	aFile: array [0..1] of file;
 	data: array [0..1] of ^dataContainer;
@@ -105,17 +105,20 @@ BEGIN
 			end
 		end;
 		
-		//datLen[2] is the index of the greater
+		//index[x] is the index of the greater
 		if datLen[0] > datLen[1] then
-			greater := 0
-		else greater := 1;
+		begin
+			index[1] := 0; //0 is greater
+			index[0] := 1
+		end
+		else 
+		begin
+			index[1] := 1; //1 is greater
+			index[0] := 0
+		end;
 		
 		for i:= 0 to datLen[greater] do
 		begin
-			if data[0]^[i] <> data[1]^[i] then
-				for j := i to datLen[greater] do
-					if  then
-						break;
 			
 		end;
 		
