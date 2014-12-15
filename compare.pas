@@ -21,7 +21,7 @@
 
 	Purpose: Scan two files and output the net differences
 }
-
+ 
 
 program compare;
 {$mode objfpc}
