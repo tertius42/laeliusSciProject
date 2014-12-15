@@ -23,8 +23,8 @@
 
 
 program delete;
-//var
-	//t: text;
+var
+	t: text;
 BEGIN
 	//writeln('to the Alamo once!');
 	//Erase(t);
