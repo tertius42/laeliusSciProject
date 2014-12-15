@@ -55,9 +55,12 @@ BEGIN
 		isUnix := true
 	else isUnix := false;
 	
+	writeln(isUnix);
+	
 	if isUnix then //add a slash at the end of the directory
 		dir := dir + '/'
-	else dir := dir + '\';
+	else //not unix (windows)
+		dir := dir + '\';
 	
 	if ParamCount <> 2 then //if not enough parameters, quit
 	begin
@@ -70,8 +73,8 @@ BEGIN
 		name[1]:=ParamStr(2);
 		
 		writeln(GetCurrentDir());
-		Assign(aFile0, dir + name[0]);
-		Assign(aFile1, dir + name[1]);
+		Assign(aFile0, name[0]);
+		Assign(aFile1, name[1]);
 		
 		writeln(dir + name[0]);
 		writeln(dir + name[1]);
@@ -109,7 +112,7 @@ BEGIN
 		
 		data[0] := GetMem(datLen[0]);
 		data[1] := GetMem(datLen[1]);
-		
+		writeln('3');
 		repeat
 			BlockRead(aFile0,data[0]^,datLen[0],returned)
 		until returned < datLen[0];
@@ -123,7 +126,7 @@ BEGIN
 		
 		{if datLen[0] < datLen[1]
 			datLen[0] := datLen[1];}
-		
+		writeln('2');
 		Assign(aText, 'out');
 		try
 			Rewrite(aText)
@@ -150,9 +153,10 @@ BEGIN
 			index[0] := 0
 		end;
 		
-		diff := 0;
+		diff := -1;
 		j:=0;
 		
+		writeln('1');
 		for i := 0 to datLen[index[0]] do
 		begin
 			if (data[index[1]]^[i] <> data[index[0]]^[i-diff]) and (i >= j) then
@@ -163,8 +167,8 @@ BEGIN
 				begin
 					inc(j);
 					inc(diff);
-					write(chr(data[index[1]]^[j]));
-					write(aText, chr(data[index[1]]^[j]))
+					//write(chr(data[index[1]]^[j]));
+					write(aText, chr(data[index[1]]^[j-1]))
 				end;
 			writeln(aText,'');
 			writeln(aText,j);
