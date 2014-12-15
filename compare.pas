@@ -36,56 +36,86 @@ var
 	i,j: longint;
 	returned: longint;
 	aText: text;
+	getOut, isUnix: boolean;
+	dir: String;
+	diff: longint;
 	index: array [0..1] of byte;
 	name: array [0..1] of string;
 	aFile: array [0..1] of file;
 	data: array [0..1] of ^dataContainer;
 	datLen: array [0..1] of longint;
 BEGIN
-	writeln('Compare');
+	writeln('Compare'); //Announce program and GPL
   writeln('This program comes with ABSOLUTELY NO WARRANTY.');
 	writeln('This is free software, and you are welcome to redistribute it');
   writeln('under certain conditons.');
 	
-	if ParamCount <> 2 then
+	dir := getCurrentDir; //get directory and determine OS
+	if Copy(dir,1,1) = '/' then
+		isUnix := true
+	else isUnix := false;
+	
+	if isUnix then //add a slash at the end of the directory
+		dir := dir + '/'
+	else dir := dir + '\';
+	
+	{if ParamCount <> 2 then //if not enough parameters, quit
 	begin
 		writeln('Usage: compare <file1> <file2>');
 	end
-	else
+	else}
 	begin
 		
-		name[0]:=ParamStr(0);
-		name[1]:=ParamStr(1);
+		//name[0]:=ParamStr(0);
+		//name[1]:=ParamStr(1);
+		name[0]:=dir+'test';
+		name[1]:=dir+'aTest';
 		
+		
+		writeln(GetCurrentDir());
 		Assign(aFile[0], name[0]);
 		Assign(aFile[1], name[1]);
 		
 		try
 			Reset(aFile[0])
 		except
-			on E: EInOutError do
-				writeln('Error on file: ' + name[0] + '. Details: ' + E.ClassName + ':' + E.Message)
+			on E: Exception do
+			begin
+				writeln('Error on file: ' + name[0] + '. Details: ' + E.ClassName + ':' + E.Message);
+				getOut := true;
+			end
 		end;
 		
 		try
 			Reset(aFile[1])
 		except
-			on E: EInOutError do
-				writeln('Error on file: ' + name[1] + '. Details: ' + E.ClassName + ':' + E.Message)
+			on E: Exception do
+			begin
+				writeln('Error on file: ' + name[1] + '. Details: ' + E.ClassName + ':' + E.Message);
+				getOut := true;
+			end
 		end;
+		
+		if getOut then
+			goto ending;
 		
 		datLen[0] := FileSize(aFile[0]);
 		datLen[1] := FileSize(aFile[1]);
+		
+		writeln(FileSize(aFile[0]));
+		writeln(FileSize(aFile[1]));
+		writeln(datLen[0]);
+		writeln(datLen[1]);
 		
 		data[0] := GetMem(datLen[0]);
 		data[1] := GetMem(datLen[1]);
 		
 		repeat
-			BlockRead(aFile[0],data[0]^,datLen[0],returned);
+			BlockRead(aFile[0],data[0]^,datLen[0],returned)
 		until returned < datLen[0];
 		
 		repeat
-			BlockRead(aFile[1],data[1]^,datLen[1],returned);
+			BlockRead(aFile[1],data[1]^,datLen[1],returned)
 		until returned < datLen[1];
 		
 		Close(aFile[0]);
@@ -101,9 +131,12 @@ BEGIN
 			on E: EInOutError do
 			begin
 				writeln('Error. Details: ' + E.ClassName + ':' + E.Message);
-				goto ending
+				getOut := true;
 			end
 		end;
+		
+		if getOut then
+			goto ending;
 		
 		//index[x] is the index of the greater
 		if datLen[0] > datLen[1] then
@@ -117,12 +150,28 @@ BEGIN
 			index[0] := 0
 		end;
 		
-		for i:= 0 to datLen[greater] do
-		begin
-			
-		end;
+		diff := 0;
+		j := 0;
 		
-	end
+		for i := 0 to datLen[index[0]] do
+		begin
+			writeln('Howdy', i);
+			if (data[index[1]]^[i] <> data[index[0]]^[i+diff]) and (i >= j) then
+			begin
+				while (data[index[1]]^[i] <> data[index[0]]^[i+diff]) do
+				begin
+					inc(j);
+					writeln('Howdy', j);
+					inc(diff);
+					write(aText, chr(data[index[1]]^[i]))
+				end;
+			writeln(aText,'')
+			end
+		end;
+		Close(aText);
+		writeln('Done!');
+		exit
+	end;
 	
 	ending:
 END.

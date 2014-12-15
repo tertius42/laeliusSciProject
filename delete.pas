@@ -23,12 +23,12 @@
 
 
 program delete;
-{var
-	t: text;}
+//var
+	//t: text;
 BEGIN
-	{writeln('to the Alamo once!');
+	//writeln('to the Alamo once!');
 	//Erase(t);
-	writeln('to the Alamo twice!');
-	writeln('and thrice!')}
+	//writeln('to the Alamo twice!');
+	//writeln('and thrice!')
 END.
 
