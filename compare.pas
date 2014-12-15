@@ -162,17 +162,10 @@ BEGIN
 			if (data[index[1]]^[i] <> data[index[0]]^[i-diff]) and (i >= j) then
 			begin
 				j := i;
-				writeln(aText,i);
-				while (data[index[1]]^[j] <> data[index[0]]^[j-diff]) do
+				while (data[index[1]]^[j] <> data[index[0]^[j-diff]) do
 				begin
-					inc(j);
-					inc(diff);
-					//write(chr(data[index[1]]^[j]));
-					write(aText, chr(data[index[1]]^[j-1]))
-				end;
-			writeln(aText,'');
-			writeln(aText,j);
-			writeln(aText,'')
+					
+				end
 			end
 		end;
 		writeln(aText,i);
