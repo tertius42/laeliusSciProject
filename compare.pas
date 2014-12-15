@@ -41,7 +41,7 @@ var
 	diff: longint;
 	index: array [0..1] of byte;
 	name: array [0..1] of string;
-	aFile: array [0..1] of file;
+	aFile0, aFile1: file;
 	data: array [0..1] of ^dataContainer;
 	datLen: array [0..1] of longint;
 BEGIN
@@ -59,25 +59,27 @@ BEGIN
 		dir := dir + '/'
 	else dir := dir + '\';
 	
-	{if ParamCount <> 2 then //if not enough parameters, quit
+	if ParamCount <> 2 then //if not enough parameters, quit
 	begin
 		writeln('Usage: compare <file1> <file2>');
 	end
-	else}
+	else
 	begin
 		
-		//name[0]:=ParamStr(0);
-		//name[1]:=ParamStr(1);
-		name[0]:=dir+'test';
-		name[1]:=dir+'aTest';
-		
+		name[0]:=ParamStr(1);
+		name[1]:=ParamStr(2);
 		
 		writeln(GetCurrentDir());
-		Assign(aFile[0], name[0]);
-		Assign(aFile[1], name[1]);
+		Assign(aFile0, dir + name[0]);
+		Assign(aFile1, dir + name[1]);
+		
+		writeln(dir + name[0]);
+		writeln(dir + name[1]);
+		
+		readln;
 		
 		try
-			Reset(aFile[0])
+			Reset(aFile0,1)
 		except
 			on E: Exception do
 			begin
@@ -87,7 +89,7 @@ BEGIN
 		end;
 		
 		try
-			Reset(aFile[1])
+			Reset(aFile1,1)
 		except
 			on E: Exception do
 			begin
@@ -99,27 +101,25 @@ BEGIN
 		if getOut then
 			goto ending;
 		
-		datLen[0] := FileSize(aFile[0]);
-		datLen[1] := FileSize(aFile[1]);
+		datLen[0] := FileSize(aFile0);
+		datLen[1] := FileSize(aFile1);
 		
-		writeln(FileSize(aFile[0]));
-		writeln(FileSize(aFile[1]));
-		writeln(datLen[0]);
-		writeln(datLen[1]);
+		writeln(FileSize(aFile0));
+		writeln(FileSize(aFile1));
 		
 		data[0] := GetMem(datLen[0]);
 		data[1] := GetMem(datLen[1]);
 		
 		repeat
-			BlockRead(aFile[0],data[0]^,datLen[0],returned)
+			BlockRead(aFile0,data[0]^,datLen[0],returned)
 		until returned < datLen[0];
 		
 		repeat
-			BlockRead(aFile[1],data[1]^,datLen[1],returned)
+			BlockRead(aFile1,data[1]^,datLen[1],returned)
 		until returned < datLen[1];
 		
-		Close(aFile[0]);
-		Close(aFile[1]);
+		Close(aFile0);
+		Close(aFile1);
 		
 		{if datLen[0] < datLen[1]
 			datLen[0] := datLen[1];}
@@ -151,23 +151,27 @@ BEGIN
 		end;
 		
 		diff := 0;
-		j := 0;
+		j:=0;
 		
 		for i := 0 to datLen[index[0]] do
 		begin
-			writeln('Howdy', i);
-			if (data[index[1]]^[i] <> data[index[0]]^[i+diff]) and (i >= j) then
+			if (data[index[1]]^[i] <> data[index[0]]^[i-diff]) and (i >= j) then
 			begin
-				while (data[index[1]]^[i] <> data[index[0]]^[i+diff]) do
+				j := i;
+				writeln(aText,i);
+				while (data[index[1]]^[j] <> data[index[0]]^[j-diff]) do
 				begin
 					inc(j);
-					writeln('Howdy', j);
 					inc(diff);
-					write(aText, chr(data[index[1]]^[i]))
+					write(chr(data[index[1]]^[j]));
+					write(aText, chr(data[index[1]]^[j]))
 				end;
+			writeln(aText,'');
+			writeln(aText,j);
 			writeln(aText,'')
 			end
 		end;
+		writeln(aText,i);
 		Close(aText);
 		writeln('Done!');
 		exit

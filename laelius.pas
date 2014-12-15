@@ -78,6 +78,7 @@ BEGIN
   if isGreat then //pretty much the rest of the project will be inside of this conditional
   begin
 		datLen := FileSize(aFile);
+		writeln(datLen);
 		if datLen > 536870912 then //half a GiB is too much!
 			datLen := 536870912;
 		
@@ -118,8 +119,8 @@ BEGIN
 		Close(aFile);
 		
 		//for debugging and seeing if it worked...
-		for i := 0 to filLen do
-			write(chr(data^[i]))
+		{for i := 0 to filLen do
+			write(chr(data^[i]))}
 		
 		//Just a fun-fact, Length(data^) returns 1, so we have to keep track of its length with datLen
 		
