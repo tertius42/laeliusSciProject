@@ -1,24 +1,24 @@
 {
 	compare.pas
-
+	
 	Copyright 2014 Louis Thomas <lthomas@mail.swvgs.us>
 	Sponsor: Mr. Rick Fisher
-
+	
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation; either version 2 of the License, or
 	(at your option) any later version.
-
+	
 	This program is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
-
+	
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 	MA 02110-1301, USA.
-
+	
 	Purpose: Scan two files and output the net differences
 }
  
@@ -33,17 +33,18 @@ label ending;
 type
 	dataContainer = array [0..0] of byte;
 var
-	i,j: longint;
+	i,j,k: longint;
 	returned: longint;
 	aText: text;
-	getOut, isUnix: boolean;
+	getOut, isUnix, equal: boolean;
 	dir: String;
 	diff: array [0..1] of longint;
 	index: array [0..1] of byte;
 	name: array [0..1] of string;
 	aFile0, aFile1: file;
 	data: array [0..1] of ^dataContainer;
-	datLen: array [0..1] of longint;
+	comp: array [0..1] of array [0..31] of byte;
+	datLen: array [0..2] of longint;
 BEGIN
 	writeln('Compare'); //Announce program and GPL
   writeln('This program comes with ABSOLUTELY NO WARRANTY.');
@@ -156,26 +157,53 @@ BEGIN
 		j:=0;
 		returned := 0;
 		
-		for i := 0 to datLen[index[0]] do
+		datLen[2] := datLen[index[1]] DIV 32;
+		
+		equal := false;
+		
+		for i := 0 to datLen[2] do
 		begin
-			if (data[index[1]]^[i] <> data[index[0]]^[i-diff[0]+returned]) and (i >= j) then
+			for j := 0 to 31 do
+				comp[0,j] := data[index[1]]^[(i)*32 + j];
+			if comp[0,0] <> data[index[0]]^[i*32] then
+				for j := 1 to 31 do
+					if comp[0,j] = data[index[0]]^[i*32 + j] then
+					begin
+						break;
+						equal := false
+					end
+					else
+						equal := true;
+			if equal then
+				for j := 0 to 31 do
+					write(aText, chr(comp[0,j]))
+		end;
+		
+		{for i := 0 to datLen[index[0]] do
+			if ((data[index[1]]^[i] <> data[index[0]]^[i-diff[0]+returned]) and (data[index[1]]^[i] <> data[index[0]]^[i])) and (i >= j) then
 			begin
 				j := i;
 				returned := 1;
 				writeln(aText,i);
+				diff[1]:=diff[1];
 				repeat
 					write(aText, chr(data[index[1]]^[j]));
 					inc(j);
-					inc(diff[1]);
-				until ((data[index[1]]^[j] = data[index[0]]^[i-diff[0]+1]) and (data[index[1]]^[j+1] = data[index[0]]^[i-diff[0]+2])) or (datLen[index[1]] < j);
+					inc(diff[1])
+				until ((data[index[1]]^[j] = data[index[0]]^[i-diff[0]+1]) and (data[index[1]]^[j+1] = data[index[0]]^[i-diff[0]+2]))
+					or ((data[index[1]]^[j] = data[index[0]]^[j]) and (data[index[1]]^[j+1] = data[index[0]]^[j+1]))
+					or (datLen[index[1]] <= j);
 				diff[0]:=diff[1];
 				writeln(aText);
 				writeln(aText,j, ' length: ',j - i);
 				writeln(aText)
-			end
-		end;
+			end;}
 		writeln(i);
 		writeln(j);
+		Assign(aFile1,'out');
+		reset(aFile1, 1);
+		writeln(FileSize(aFile1));
+		Close(aFile1);
 		writeln(aText,i);
 		Close(aText);
 		writeln('Done!');

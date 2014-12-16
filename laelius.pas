@@ -1,5 +1,5 @@
 {
-	laelius.pas 
+	laelius.pas
 	
 	Copyright 2014 Louis Thomas <lthomas@mail.swvgs.us>
 	Sponsor: Mr. Rick Fisher
