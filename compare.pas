@@ -38,7 +38,7 @@ var
 	aText: text;
 	getOut, isUnix: boolean;
 	dir: String;
-	diff: longint;
+	diff: array [0..1] of longint;
 	index: array [0..1] of byte;
 	name: array [0..1] of string;
 	aFile0, aFile1: file;
@@ -76,10 +76,10 @@ BEGIN
 		Assign(aFile0, name[0]);
 		Assign(aFile1, name[1]);
 		
-		writeln(dir + name[0]);
-		writeln(dir + name[1]);
+		//writeln(dir + name[0]);
+		//writeln(dir + name[1]);
 		
-		readln;
+		//readln;
 		
 		try
 			Reset(aFile0,1)
@@ -112,7 +112,6 @@ BEGIN
 		
 		data[0] := GetMem(datLen[0]);
 		data[1] := GetMem(datLen[1]);
-		writeln('3');
 		repeat
 			BlockRead(aFile0,data[0]^,datLen[0],returned)
 		until returned < datLen[0];
@@ -126,7 +125,6 @@ BEGIN
 		
 		{if datLen[0] < datLen[1]
 			datLen[0] := datLen[1];}
-		writeln('2');
 		Assign(aText, 'out');
 		try
 			Rewrite(aText)
@@ -153,21 +151,31 @@ BEGIN
 			index[0] := 0
 		end;
 		
-		diff := -1;
+		diff[0] := 0;
+		diff[1] := 0;
 		j:=0;
+		returned := 0;
 		
-		writeln('1');
 		for i := 0 to datLen[index[0]] do
 		begin
-			if (data[index[1]]^[i] <> data[index[0]]^[i-diff]) and (i >= j) then
+			if (data[index[1]]^[i] <> data[index[0]]^[i-diff[0]+returned]) and (i >= j) then
 			begin
 				j := i;
-				while (data[index[1]]^[j] <> data[index[0]^[j-diff]) do
-				begin
-					
-				end
+				returned := 1;
+				writeln(aText,i);
+				repeat
+					write(aText, chr(data[index[1]]^[j]));
+					inc(j);
+					inc(diff[1]);
+				until ((data[index[1]]^[j] = data[index[0]]^[i-diff[0]+1]) and (data[index[1]]^[j+1] = data[index[0]]^[i-diff[0]+2])) or (datLen[index[1]] < j);
+				diff[0]:=diff[1];
+				writeln(aText);
+				writeln(aText,j, ' length: ',j - i);
+				writeln(aText)
 			end
 		end;
+		writeln(i);
+		writeln(j);
 		writeln(aText,i);
 		Close(aText);
 		writeln('Done!');
