@@ -26,6 +26,7 @@ program delete;
 var
 	t: text;
 BEGIN
+	Assign(t,'hi');
 	//writeln('to the Alamo once!');
 	//Erase(t);
 	//writeln('to the Alamo twice!');

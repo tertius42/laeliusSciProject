@@ -36,14 +36,14 @@ var
 	i,j,k: longint;
 	returned: longint;
 	aText: text;
-	getOut, isUnix, equal: boolean;
+	getOut, isUnix: boolean;
 	dir: String;
 	diff: array [0..1] of longint;
 	index: array [0..1] of byte;
 	name: array [0..1] of string;
 	aFile0, aFile1: file;
 	data: array [0..1] of ^dataContainer;
-	comp: array [0..1] of array [0..31] of byte;
+	comp: array [0..1] of array [0..15] of byte;
 	datLen: array [0..2] of longint;
 BEGIN
 	writeln('Compare'); //Announce program and GPL
@@ -51,12 +51,14 @@ BEGIN
 	writeln('This is free software, and you are welcome to redistribute it');
   writeln('under certain conditons.');
 	
+	{for i := 0 to 255 do
+		write(chr(i));}
+	
 	dir := getCurrentDir; //get directory and determine OS
 	if Copy(dir,1,1) = '/' then
 		isUnix := true
 	else isUnix := false;
 	
-	writeln(isUnix);
 	
 	if isUnix then //add a slash at the end of the directory
 		dir := dir + '/'
@@ -157,55 +159,57 @@ BEGIN
 		j:=0;
 		returned := 0;
 		
-		datLen[2] := datLen[index[1]] DIV 32;
+		datLen[2] := datLen[index[1]] DIV 16;
 		
-		equal := false;
-		
-		for i := 0 to datLen[2] do
+		for i := 0 to datLen[2] do 											//from i to datLen / 16
 		begin
-			for j := 0 to 31 do
-				comp[0,j] := data[index[1]]^[(i)*32 + j];
-			if comp[0,0] <> data[index[0]]^[i*32] then
-				for j := 1 to 31 do
-					if comp[0,j] = data[index[0]]^[i*32 + j] then
-					begin
-						break;
-						equal := false
+			for j := 0 to 15 do 													//from 1 to 16
+				comp[0,j] := data[index[0]]^[i*16 + j]; 		//load comparison array wtih bytes (16)
+			for j := 0 to datLen[index[1]] do 						//to the length of the program
+				if (comp[0,0] = data[index[1]]^[j]) and (diff[0] <= j) then  		//if the first byte EVER equals ANY byte in the other
+				begin
+					for k := 1 to 15 do 											//compare each byte with each consecutive bytes in BOTH arrays (16 bytes)
+						if comp[0,k] <> data[index[1]]^[j+k] then 	//if they are EVER not equal to each other 
+							break; 																//get out of here!
+					if k <> 15 then break 										//if k ever reached its end, exit
+					else 																			//if k DIDN'T work...
+					begin																			//write differences to output
+						{if j <> diff[0] then
+						begin
+							writeln(aText);
+							writeln(aText,diff[0])
+						end;
+						for k := 0 to 15 do											//write everything in the comparison array to the text file
+							write(aText,chr(comp[0,k]));					//of course, as a character}
+						for k := 0 to 15 do
+							data[index[1]]^[j + k] := 255;
+						{if j <> diff[0] then
+						begin
+							writeln(aText);
+							writeln(aText, j + 16)
+						end;}
+						diff[0] := j + 16;
+						break
 					end
-					else
-						equal := true;
-			if equal then
-				for j := 0 to 31 do
-					write(aText, chr(comp[0,j]))
-		end;
+				end
+		end; //parent for-loop ends here (just 5 easy for-loops!)
 		
-		{for i := 0 to datLen[index[0]] do
-			if ((data[index[1]]^[i] <> data[index[0]]^[i-diff[0]+returned]) and (data[index[1]]^[i] <> data[index[0]]^[i])) and (i >= j) then
-			begin
-				j := i;
-				returned := 1;
-				writeln(aText,i);
-				diff[1]:=diff[1];
-				repeat
-					write(aText, chr(data[index[1]]^[j]));
-					inc(j);
-					inc(diff[1])
-				until ((data[index[1]]^[j] = data[index[0]]^[i-diff[0]+1]) and (data[index[1]]^[j+1] = data[index[0]]^[i-diff[0]+2]))
-					or ((data[index[1]]^[j] = data[index[0]]^[j]) and (data[index[1]]^[j+1] = data[index[0]]^[j+1]))
-					or (datLen[index[1]] <= j);
-				diff[0]:=diff[1];
-				writeln(aText);
-				writeln(aText,j, ' length: ',j - i);
-				writeln(aText)
-			end;}
+		for i := 0 to datLen[index[0]] do
+			if data[index[1]]^[i] <> 255 then
+				write(aText,chr(data[index[0]]^[i]));
+		
 		writeln(i);
 		writeln(j);
-		Assign(aFile1,'out');
-		reset(aFile1, 1);
-		writeln(FileSize(aFile1));
-		Close(aFile1);
+		
+		
 		writeln(aText,i);
 		Close(aText);
+		Assign(aFile1,'out');
+		reset(aFile1, 1);
+		
+		writeln(FileSize(aFile1));
+		Close(aFile1);
+		
 		writeln('Done!');
 		exit
 	end;
