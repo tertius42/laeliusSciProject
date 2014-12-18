@@ -46,15 +46,11 @@ var
 	comp: array [0..1] of array [0..15] of byte;
 	datLen: array [0..2] of longint;
 	diffInd: array of byte;
-	diffTemp: array of byte;
 BEGIN
 	writeln('Compare'); //Announce program and GPL
   writeln('This program comes with ABSOLUTELY NO WARRANTY.');
 	writeln('This is free software, and you are welcome to redistribute it');
   writeln('under certain conditons.');
-	
-	{for i := 0 to 255 do
-		write(chr(i));}
 	
 	dir := getCurrentDir; //get directory and determine OS
 	if Copy(dir,1,1) = '/' then
@@ -164,8 +160,8 @@ BEGIN
 		
 		datLen[2] := datLen[index[1]] DIV 16;
 		
-		setLength(diffTemp,1);
-		setLength(diffInd,1);
+		setLength(diffInd,datLen[index[1]]);
+		//fillByte(diffInd,datLen[index[1]],0);
 		
 		writeln('Determining differences...');
 		
@@ -182,23 +178,8 @@ BEGIN
 					if k = 15 then 														//if k DIDN'T work...
 					begin																			//write differences to output
 						
-						l := l + 1;
-						
-						if l > 1 then
-						begin
-							SetLength(diffTemp,l);
-							
-							for k := 0 to Length(diffInd) - 1 do
-								diffTemp[k] := diffInd[k];
-							
-							SetLength(diffInd,l);
-							
-							for k := 0 to Length(diffInd) - 1 do
-								diffInd[k] := diffTemp[k]
-							
-						end;
-						
-						diffInd[l-1] := j;
+						for k := 0 to 15 do
+							data[index[1]]^[j + k] := 255; //clear irrelevant memory
 						
 						diff[0] := j + 16
 					end;
@@ -206,20 +187,9 @@ BEGIN
 				end
 		end; //parent for-loop ends here (just 5 easy for-loops!)
 		
-		l := 0;
-		j := 0;
-		i := 0;
-		
-		writeln('Writing to file...');
-		repeat
-			for i := j to diffInd[l] do
-				write(aText,chr(data[index[1]]^[i]));
-			l := l + 1;
-			j := i + 16
-		until i >= datLen[index[1]];
-		
-		for i := 0 to Length(diffInd)-1 do
-			write(diffInd[i],' ');
+		for i := 0 to datLen[index[0]] do
+			if data[index[1]]^[i] <> 255 then
+				write(aText,chr(data[index[0]]^[i]));
 		
 		writeln(i);
 		writeln(j);
