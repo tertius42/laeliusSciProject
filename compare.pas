@@ -33,10 +33,10 @@ label ending;
 type
 	dataContainer = array [0..0] of byte;
 var
-	i,j,k: longint;
+	i,j,k,l: longint;
 	returned: longint;
 	aText: text;
-	getOut, isUnix: boolean;
+	getOut, isUnix, go: boolean;
 	dir: String;
 	diff: array [0..1] of longint;
 	index: array [0..1] of byte;
@@ -45,6 +45,8 @@ var
 	data: array [0..1] of ^dataContainer;
 	comp: array [0..1] of array [0..15] of byte;
 	datLen: array [0..2] of longint;
+	diffInd: array of byte;
+	diffTemp: array of byte;
 BEGIN
 	writeln('Compare'); //Announce program and GPL
   writeln('This program comes with ABSOLUTELY NO WARRANTY.');
@@ -157,50 +159,70 @@ BEGIN
 		diff[0] := 0;
 		diff[1] := 0;
 		j:=0;
+		l:=0;
 		returned := 0;
 		
 		datLen[2] := datLen[index[1]] DIV 16;
+		
+		setLength(diffTemp,1);
+		setLength(diffInd,1);
+		
+		writeln('Determining differences...');
 		
 		for i := 0 to datLen[2] do 											//from i to datLen / 16
 		begin
 			for j := 0 to 15 do 													//from 1 to 16
 				comp[0,j] := data[index[0]]^[i*16 + j]; 		//load comparison array wtih bytes (16)
-			for j := 0 to datLen[index[1]] do 						//to the length of the program
+			for j := 0 to datLen[index[1]] - 16 do 						//to the length of the program
 				if (comp[0,0] = data[index[1]]^[j]) and (diff[0] <= j) then  		//if the first byte EVER equals ANY byte in the other
 				begin
 					for k := 1 to 15 do 											//compare each byte with each consecutive bytes in BOTH arrays (16 bytes)
 						if comp[0,k] <> data[index[1]]^[j+k] then 	//if they are EVER not equal to each other 
 							break; 																//get out of here!
-					if k <> 15 then break 										//if k ever reached its end, exit
-					else 																			//if k DIDN'T work...
+					if k = 15 then 														//if k DIDN'T work...
 					begin																			//write differences to output
-						{if j <> diff[0] then
+						
+						l := l + 1;
+						
+						if l > 1 then
 						begin
-							writeln(aText);
-							writeln(aText,diff[0])
+							SetLength(diffTemp,l);
+							
+							for k := 0 to Length(diffInd) - 1 do
+								diffTemp[k] := diffInd[k];
+							
+							SetLength(diffInd,l);
+							
+							for k := 0 to Length(diffInd) - 1 do
+								diffInd[k] := diffTemp[k]
+							
 						end;
-						for k := 0 to 15 do											//write everything in the comparison array to the text file
-							write(aText,chr(comp[0,k]));					//of course, as a character}
-						for k := 0 to 15 do
-							data[index[1]]^[j + k] := 255;
-						{if j <> diff[0] then
-						begin
-							writeln(aText);
-							writeln(aText, j + 16)
-						end;}
-						diff[0] := j + 16;
-						break
-					end
+						
+						diffInd[l-1] := j;
+						
+						diff[0] := j + 16
+					end;
+					break
 				end
 		end; //parent for-loop ends here (just 5 easy for-loops!)
 		
-		for i := 0 to datLen[index[0]] do
-			if data[index[1]]^[i] <> 255 then
-				write(aText,chr(data[index[0]]^[i]));
+		l := 0;
+		j := 0;
+		i := 0;
+		
+		writeln('Writing to file...');
+		repeat
+			for i := j to diffInd[l] do
+				write(aText,chr(data[index[1]]^[i]));
+			l := l + 1;
+			j := i + 16
+		until i >= datLen[index[1]];
+		
+		for i := 0 to Length(diffInd)-1 do
+			write(diffInd[i],' ');
 		
 		writeln(i);
 		writeln(j);
-		
 		
 		writeln(aText,i);
 		Close(aText);
