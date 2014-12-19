@@ -33,7 +33,7 @@ label ending;
 type
 	dataContainer = array [0..0] of byte;
 var
-	i,j,k,l: longint;
+	i,j,k: longint;
 	returned: longint;
 	aText: text;
 	getOut, isUnix, go: boolean;
@@ -45,7 +45,6 @@ var
 	data: array [0..1] of ^dataContainer;
 	comp: array [0..1] of array [0..15] of byte;
 	datLen: array [0..2] of longint;
-	diffInd: array of byte;
 BEGIN
 	writeln('Compare'); //Announce program and GPL
   writeln('This program comes with ABSOLUTELY NO WARRANTY.');
@@ -155,20 +154,16 @@ BEGIN
 		diff[0] := 0;
 		diff[1] := 0;
 		j:=0;
-		l:=0;
 		returned := 0;
 		
-		datLen[2] := datLen[index[1]] DIV 16;
-		
-		setLength(diffInd,datLen[index[1]]);
-		//fillByte(diffInd,datLen[index[1]],0);
+		datLen[2] := datLen[index[0]] DIV 16 + 1;
 		
 		writeln('Determining differences...');
 		
-		for i := 0 to datLen[2] do 											//from i to datLen / 16
+		for i := 0 to datLen[index[0]] DIV 16 + 1 do 											//from i to datLen / 16
 		begin
 			for j := 0 to 15 do 													//from 1 to 16
-				comp[0,j] := data[index[0]]^[i*16 + j]; 		//load comparison array wtih bytes (16)
+				comp[0,j] := data[index[0]]^[i*16 + j]; 		//load comparison array with bytes (16)
 			for j := 0 to datLen[index[1]] - 16 do 						//to the length of the program
 				if (comp[0,0] = data[index[1]]^[j]) and (diff[0] <= j) then  		//if the first byte EVER equals ANY byte in the other
 				begin
@@ -181,15 +176,31 @@ BEGIN
 						for k := 0 to 15 do
 							data[index[1]]^[j + k] := 255; //clear irrelevant memory
 						
-						diff[0] := j + 16
-					end;
-					break
+						diff[0] := j + 16;
+						break
+					end
 				end
-		end; //parent for-loop ends here (just 5 easy for-loops!)
+		end; //parent for-loop ends here (just 5 easy for-loops!)}
+		
+		{for i:= 0 to datLen[index[1]] do
+		begin
+			for j:=0 to 15 do
+				comp[0,j] := data[index[1]]^[i + j];
+			
+		end;}
 		
 		for i := 0 to datLen[index[0]] do
 			if data[index[1]]^[i] <> 255 then
+			begin
 				write(aText,chr(data[index[0]]^[i]));
+				go := true
+			end
+			else if go then
+			begin
+				writeln(aText);
+				writeln(aText);
+				go := false
+			end;
 		
 		writeln(i);
 		writeln(j);
@@ -199,7 +210,7 @@ BEGIN
 		Assign(aFile1,'out');
 		reset(aFile1, 1);
 		
-		writeln(FileSize(aFile1));
+		writeln('Size of ''out'': ', FileSize(aFile1));
 		Close(aFile1);
 		
 		writeln('Done!');
