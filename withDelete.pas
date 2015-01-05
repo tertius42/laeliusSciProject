@@ -28,7 +28,7 @@ var
 BEGIN
 	Assign(t,'hi');
 	//writeln('to the Alamo once!');
-	//Erase(t);
+	Erase(t);
 	//writeln('to the Alamo twice!');
 	//writeln('and thrice!')
 END.

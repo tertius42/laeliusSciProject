@@ -33,17 +33,17 @@ label ending;
 type
 	dataContainer = array [0..0] of byte;
 var
-	i,j,k: longint;
+	i,j,k,l: longint;
 	returned: longint;
 	aText: text;
 	getOut, isUnix, go: boolean;
 	dir: String;
 	diff: array [0..1] of longint;
+	comp: array [0..15] of byte;
 	index: array [0..1] of byte;
 	name: array [0..1] of string;
 	aFile0, aFile1: file;
-	data: array [0..1] of ^dataContainer;
-	comp: array [0..1] of array [0..15] of byte;
+	data: array [0..2] of ^dataContainer;
 	datLen: array [0..2] of longint;
 BEGIN
 	writeln('Compare'); //Announce program and GPL
@@ -151,61 +151,50 @@ BEGIN
 			index[0] := 0
 		end;
 		
+		data[2] := GetMem(datLen[index[1]]);
+		
 		diff[0] := 0;
 		diff[1] := 0;
+		i:=0;
 		j:=0;
+		l:=0;
 		returned := 0;
 		
 		datLen[2] := datLen[index[0]] DIV 16 + 1;
 		
 		writeln('Determining differences...');
 		
-		for i := 0 to datLen[index[0]] DIV 16 + 1 do 											//from i to datLen / 16
-		begin
-			for j := 0 to 15 do 													//from 1 to 16
-				comp[0,j] := data[index[0]]^[i*16 + j]; 		//load comparison array with bytes (16)
-			for j := 0 to datLen[index[1]] - 16 do 						//to the length of the program
-				if (comp[0,0] = data[index[1]]^[j]) and (diff[0] <= j) then  		//if the first byte EVER equals ANY byte in the other
-				begin
-					for k := 1 to 15 do 											//compare each byte with each consecutive bytes in BOTH arrays (16 bytes)
-						if comp[0,k] <> data[index[1]]^[j+k] then 	//if they are EVER not equal to each other 
-							break; 																//get out of here!
-					if k = 15 then 														//if k DIDN'T work...
-					begin																			//write differences to output
-						
-						for k := 0 to 15 do
-							data[index[1]]^[j + k] := 255; //clear irrelevant memory
-						
-						diff[0] := j + 16;
-						break
-					end
-				end
-		end; //parent for-loop ends here (just 5 easy for-loops!)}
+		go := true;
 		
-		{for i:= 0 to datLen[index[1]] do
+		for i := 0 to datLen[index[1]] DIV 16 + 1 do
 		begin
-			for j:=0 to 15 do
-				comp[0,j] := data[index[1]]^[i + j];
-			
-		end;}
-		
-		for i := 0 to datLen[index[0]] do
-			if data[index[1]]^[i] <> 255 then
+			for j := 0 to 15 do
+				comp[j] := data[index[1]]^[i*16+j];
+			go := true;
+			diff[0] := 0;
+			for j := 0 to datLen[0] do
 			begin
-				write(aText,chr(data[index[0]]^[i]));
-				go := true
+				if (comp[0] = data[index[0]]^[j]) and (j >= diff[0]) then
+					for k := 1 to 15 do
+						if (comp[k] = data[index[0]]^[j+k]) then
+							go := false
+						else
+						begin
+							go := true;
+							diff[0] := j + k;
+							break
+						end;
+				if (j = datLen[0]) and go then
+					for k := 0 to 15 do
+						write(aText,chr(comp[k]));
+				if not go then break
 			end
-			else if go then
-			begin
-				writeln(aText);
-				writeln(aText);
-				go := false
-			end;
+		end;
 		
+		writeln;
 		writeln(i);
 		writeln(j);
 		
-		writeln(aText,i);
 		Close(aText);
 		Assign(aFile1,'out');
 		reset(aFile1, 1);
@@ -219,4 +208,3 @@ BEGIN
 	
 	ending:
 END.
-
