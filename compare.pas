@@ -33,7 +33,8 @@ label ending;
 type
 	dataContainer = array [0..0] of byte;
 var
-	i,j,k,l: longint;
+	i,j,k: longint;
+	range: byte;
 	returned: longint;
 	aText: text;
 	getOut, isUnix, go: boolean;
@@ -157,7 +158,6 @@ BEGIN
 		diff[1] := 0;
 		i:=0;
 		j:=0;
-		l:=0;
 		returned := 0;
 		
 		datLen[2] := datLen[index[0]] DIV 16 + 1;
@@ -168,7 +168,10 @@ BEGIN
 		
 		for i := 0 to datLen[index[1]] DIV 16 + 1 do
 		begin
-			for j := 0 to 15 do
+			if i + 15 > datLen[index[1]] then
+				range := datLen[index[1]] - i
+			else range := 15;
+			for j := 0 to range do
 				comp[j] := data[index[1]]^[i*16+j];
 			go := true;
 			diff[0] := 0;
@@ -181,11 +184,11 @@ BEGIN
 						else
 						begin
 							go := true;
-							diff[0] := j + k;
+							diff[0] := j + 1;
 							break
 						end;
 				if (j = datLen[0]) and go then
-					for k := 0 to 15 do
+					for k := 0 to range do
 						write(aText,chr(comp[k]));
 				if not go then break
 			end
