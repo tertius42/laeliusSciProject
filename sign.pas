@@ -1,206 +1,202 @@
 {
-   sign.pas
-   
-   Copyright 2015 Louis Thomas <lthomas@mail.swvgs.us>
-   
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2 of the License, or
-   (at your option) any later version.
-   
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-   
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-   MA 02110-1301, USA.
-   
-   
+	sign.pas
+
+	Copyright 2015 Louis Thomas <lthomas@mail.swvgs.us>
+	Date: 1 January 2015					Sponsor: Mr. Rick Fisher
+
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+	MA 02110-1301, USA.
+
+	Purpose: Take a file and compress it not for uncompression, but to 
+	keep in store for virus detection later.
+	
+	Odd fact: Compressing once results 3x compression (appr.).
+	Compressing twice result appr. 20..24x compression! Amazing!
 }
-
-
 program sign;
 {$mode objfpc}
 uses sysutils, crt;
 label finish;
 type
-	dataContainer = array [0..0] of byte;
+	dataContainer = array [0..0] of byte; //almost a static array!
 var
-	i: longint;
+	i: longword;
 	dir, name: String;
 	data: ^dataContainer;
-	datLen,returned: longint;
+	datLen,returned: longword;
 	aFile: file;
 	aText: text;
 	go: boolean; //periodic passed or failed boolean
+	init: double;
 
+{ * String := byteSign(b1, b2, b3, b4);
+	* Converts 4 bytes into something less than four bytes
+	* Returns a small String that contains (hopefully) less than 4 characters
+	* that correspond to their binary counterparts }
 function byteSign(b1: byte; b2: byte; b3: byte; b4: byte): String;
 var
 	res: longword;
 	buf: String;
 	bi,r1: byte;
 begin
-	res:= b1 * b2 + b2 * b3 + b3 * b1;
-	if b4 <> 0 then
-		res := res DIV b4;
+
+	res:= b1 * b2 + b2 * b3 + b3 * b1; //sum the products of the first three bytes
+	
+	if b4 > 0 then //don't want DIV BY 0 error
+		res := res DIV b4;//}
+		
 	Str(res,buf);
-	bi:=0;
+	
+	bi:=0; //initialize
 	byteSign:='';
+	
 	repeat
 		inc(bi);
 		Val(Copy(buf,bi,1),r1);
+		
 		case r1 of
-			0: begin
+			0: begin //do nothing (for something such as 081)
 			end;
-			1: begin
-				Val(Copy(buf,bi,3),r1);
-				byteSign:=byteSign + Chr(r1);
-				bi:= bi + 2
+			
+			1: begin //if 1, 100..199 are okay as a byte, so we know the next 2 numbers are good
+				if Length(buf) - bi >= 3 then //don't want to try and get numbers from nothing!
+					Val(Copy(buf,bi,3),r1) //convert 3 numbers to one number
+				else Val(Copy(buf,bi,Length(buf) - bi),r1);
+				byteSign:=byteSign + Chr(r1); //add to net output
+				bi:= bi + 2 //increase counter (net) by 3
 			end;
-			2: begin
+			
+			2: begin //if 2, 200..255 are okay, but 256..299 aren't...
 				Val(Copy(buf,bi+1,2),r1);
-				if r1 < 55 then
+				if r1 <= 55 then //so evaluate the next two numbers
 				begin
-					Val(Copy(buf,bi,3),r1);
+					if Length(buf) - bi >= 3 then //likewise
+						Val(Copy(buf,bi,3),r1)
+					else Val(Copy(buf,bi,Length(buf) - bi),r1);
 					byteSign:=byteSign+Chr(r1);
 					bi:=bi+2
 				end
-				else
+				else //if greater than 55
 				begin
 					Val(Copy(buf,bi,2),r1);
 					byteSign:=byteSign+Chr(r1);
 					bi:=bi+1
 				end
 			end;
-			3..9: begin
-				Val(Copy(buf,b1,2),r1);
+			
+			3..9: begin //300..999 will never exist as bytes, but 30..99 will
+				if Length(buf) - bi >= 2 then
+					Val(Copy(buf,bi,2),r1)
+				else Val(Copy(buf,bi,1),r1);
 				byteSign:=byteSign + Chr(r1);
 				bi:=bi+1
-			end
-		end
+			end //ends 3..9
+			
+		end //ends case
 	until bi > Length(buf)
-end;
+end;//ends byteSign
 
 BEGIN
-	dir := getCurrentDir;
+	dir := getCurrentDir; //get directory
 	
-	{$IFDEF WINDOWS}
-	dir := dir + '\';
+	{$IFDEF WINDOWS} //correct directory for use with files
+	dir := dir + '\'; //good for misceallaneous operating systems
 	{$ENDIF WINDOWS}
 	{$IFDEF UNIX}
 	dir := dir + '/';
 	{$ENDIF UNIX}
 	
-	writeln('Sign: v0.1');
+	writeln('Sign: v0.1'); //Announce title and GPL
   writeln('This program comes with ABSOLUTELY NO WARRANTY.');
 	writeln('This is free software, and you are welcome to redistribute it');
   writeln('under certain conditons.');
 	
-	if paramCount <> 1 then
+	if paramCount <> 1 then //if it got odd input
 	begin
-		write('File: ');
+		write('File: '); //directly prompt for a file
 		readln(name);
 	end
-	else
+	else //get filename from parameter
 		name:= paramStr(1);
+	
+	//Important: Let the user know that the program is grinding!
+	writeln('Working...');
+	
+	//Get an initial time value
+	init:=TimeStampToMSecs(DateTimeToTimeStamp(Time));
 	
 	{$IFDEF UNIX}
 	if Copy(name,1,1) <> '/' then
 	{$ENDIF UNIX}
 	{$IFDEF WINDOWS}
-	if Copy(name,1,1) <> '\' then
+	if Copy(name,3,1) <> '\' then
 	{$ENDIF WINDOWS}
-		name := dir + name;
+		name := dir + name; //correct if it only got a name
 	
-	go := true;
+	go := true; //initialize
 	
-	Assign(aFile,name);
+	Assign(aFile,name); //initialize
 	
-	try
+	try //open file with provisions for errors
 		Reset(aFile,1);
 	except
 		on E: Exception do
 		begin
 			writeln(E.Classname + ': ' + E.Message);
-			go := false;
-		end;
+			go := false; //we don't want the rest of the program to execute!
+			writeln('Nothing to do!')
+		end
 	end;
 	
-	if not go then goto finish;
+	if not go then goto finish; //label is at the VERY END
+	//love statements like that
 	
-	datLen:=FileSize(aFile);
+	datLen:=FileSize(aFile); //set length of buffer to the file size
 	
-	data := GetMem(datLen);
+	data := GetMem(datLen); //get the same amount of data from the memory
 	
-	repeat
+	repeat //read the file into memory
 		BlockRead(aFile,data^,datLen,returned)
 	until returned < datLen;
 	
-	Close(aFile);
+	Close(aFile); //done with the file!
 	
 	i:=0;
 	
-	Assign(aText,name + '.sig');
+	Assign(aText,name + '.sig'); //output files are as follows: <directory>.sig
 	
-	try
+	try //rewrite a new file with provisions for errors
 		Rewrite(aText);
 	except
 		on E: Exception do
-			writeln(E.Classname + ': ' + E.Message)
+		begin
+			writeln(E.Classname + ': ' + E.Message);
+			go := false
+		end
 	end;
 	
-	repeat
+	if not go then goto finish; //exit
+	
+	repeat //byteSign every four bytes to get lossy compression
 		write(aText, byteSign(data^[i],data^[i+1],data^[i+2],data^[i+3]));
 		i := i + 4
 	until i > datLen;
 	
 	Close(aText);
 	
-	Assign(aFile,name+'.sig');
-	
-	try
-		Reset(aFile,1);
-	except
-		on E: Exception do
-		begin
-			writeln(E.Classname + ': ' + E.Message);
-			go := false;
-		end;
-	end;
-	
-	if not go then goto finish;
-	
-	datLen:=FileSize(aFile);
-	
-	data := GetMem(datLen);
-	
-	repeat
-		BlockRead(aFile,data^,datLen,returned)
-	until returned < datLen;
-	
-	Close(aFile);
-	
-	i:=0;
-	
-	Assign(aText,name + '.sig');
-	
-	try
-		Rewrite(aText);
-	except
-		on E: Exception do
-			writeln(E.Classname + ': ' + E.Message)
-	end;
-	
-	repeat
-		write(aText, byteSign(data^[i],data^[i+1],data^[i+2],data^[i+3]));
-		i := i + 4
-	until i > datLen;
-	
-	Close(aText);
-	
+	//for file size (more or less debug info)
 	Assign(aFile,name + '.sig');
 	
 	try
@@ -213,10 +209,14 @@ BEGIN
 		end;
 	end;
 	
+	//write to stdout
 	writeln('Size of ' + name + '.sig: ', FileSize(aFile));
+	
+	//Report the time in seconds how long it took to complete
+	writeln('Took ', ((TimeStampToMSecs(DateTimeToTimeStamp(Time)) - init) / 1000):0:3, ' seconds');
 	
 	Close(aFile);
 	
 	finish: //THIS STAYS HERE AT THE END!!!!
-	writeln('Done!')
+	writeln('Done!') //Annouce that the program has indeed finished
 END.

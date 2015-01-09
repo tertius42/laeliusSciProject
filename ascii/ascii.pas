@@ -1,7 +1,7 @@
-(*
-   delete.pas
+{
+   ascii.pas
    
-   Copyright 2014 Louis Thomas <lthomas@mail.swvgs.us>
+   Copyright 2015 Louis Thomas <lthomas@mail.swvgs.us>
    
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -19,17 +19,22 @@
    MA 02110-1301, USA.
    
    
-*)
+}
 
 
-program delete;
-var
-	t: text;
+program ascii;
+var i : byte;
+	aText: text;
 BEGIN
-	Assign(t,'hi');
-	//writeln('to the Alamo once!');
-	Erase(t);
-	//writeln('to the Alamo twice!');
-	//writeln('and thrice!')
+	Assign(aText,'./out');
+	Rewrite(aText);
+	i:=0;
+	write(aText,chr(i));
+	repeat
+		i:=i+1;
+		write(aText,chr(i))
+	until i = 255;
+	Close(aText);
+	
 END.
 
