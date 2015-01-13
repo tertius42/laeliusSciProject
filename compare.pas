@@ -36,7 +36,7 @@ var
 	i,j,k: longword;//counters
 	returned: longword; //returned length data, necessary to prevent errors
 	init: double; //timer
-	block: word; //size of read block
+	block, last: byte; //size of read block
 	aText: text; //output file
 	getOut, isUnix, go: boolean; //misc booleans (isUnix is of now deprecated!)
 	dir: String; //current directory
@@ -48,10 +48,11 @@ var
 	data: array [0..2] of ^dataContainer; //again, the nested arrays
 	datLen: array [0..2] of longword; //size of the files
 BEGIN
-	writeln('Compare'); //Announce program and GPL
+	writeln('Compare'); //Announce program and GPL 
   writeln('This program comes with ABSOLUTELY NO WARRANTY.');
 	writeln('This is free software, and you are welcome to redistribute it');
   writeln('under certain conditons.');
+  
 	
 	dir := getCurrentDir; //get directory and determine OS
 	if Copy(dir,1,1) = '/' then
@@ -64,9 +65,9 @@ BEGIN
 	else //not unix (windows)
 		dir := dir + '\';
 	
-	if ParamCount <> 2 then //if not enough parameters, quit
+	if ParamCount < 2 then //if not enough parameters, quit
 	begin
-		writeln('Usage: compare <file1> <file2>'); //explain how to use the program
+		writeln('Usage: compare <file1> <file2> [<output>]'); //explain how to use the program
 	end
 	else
 	begin
@@ -122,7 +123,10 @@ BEGIN
 		
 		{if datLen[0] < datLen[1]
 			datLen[0] := datLen[1];}
-		Assign(aText, 'out'); //open the output file
+		if ParamCount = 3 then
+			Assign(aText, ParamStr(3))
+		else
+			Assign(aText, 'out'); //open the output file
 		try
 			Rewrite(aText) //to put output in
 		except 
@@ -167,74 +171,89 @@ BEGIN
 		//There a direct copy underneath without all the comments
 		for i := 0 to datLen[index[1]] DIV block do //for the length of the longer byte sequence divided by the block size
 		begin
-			for j := 0 to block-1 do //load the block
+			if i*block + block > datLen[index[1]] then
+				last := datLen[index[1]] - i*block
+			else last := block - 1;
+			for j := 0 to last do //load the block
 				comp[j] := data[index[1]]^[i*block+j];
 			go := true; //initialize go and diff[0]
 			diff[0] := 0;
 			for j := 0 to datLen[index[0]] do //for the length of the smaller byte sequence
 			begin
 				if (comp[0] = data[index[0]]^[j]) and (j >= diff[0]) then //if the first byte of the block is EVER equal to ANYTHING in the other byte ssequence
-					for k := 1 to block-1 do // for the remaining block
+					for k := 1 to last do // for the remaining block
 						if (comp[k] = data[index[0]]^[j+k]) then //compare against the sequence
 							go := false //if never equal, go will remain false
 						else
 						begin //otherwise, go will become true, this for-loop will break,
 							go := true;
-							diff[0] := j + 1; //and we will wait a little-bit to compare again
+							diff[0] := j + 1; //and we will wait a little bit to compare again
 							break
 						end;
 				if not go then break //if the block had equaled SOMETHING in the sequence, break
-				else if (j = datLen[0]) then //else, write to file as a difference
-					for k := 0 to block-1 do
+				else if (j = datLen[index[0]]) then //else, write to file as a difference
+					for k := 0 to last do
 						write(aText,chr(comp[k]))
 			end
 		end; //Ain't ye a buet?
 		
-		Assign(aFile2,'./out'); //assign the output
+		Close(aText);
+		if ParamCount = 3 then
+			Assign(aFile2, ParamStr(3))
+		else
+			Assign(aFile2, 'out');  //assign the output
 		Reset(aFile2,1); //got lazy here, but the program will essentially do the same thing, anyways
 		
 		datLen[2] := FileSize(aFile2); //get file size
-		data[2] := GetMem(datLen[2]); //get same amount from RAM
 		
-		repeat //put file into RAM
-			BlockRead(aFile2,data[2]^,datLen[2],returned)
-		until returned < datLen[2];
-		
-		block:=16; //Now ye's goin' ta observe in 16-byte blocks!
-		
-		Close(aFile2); //Close the file
-		Rewrite(aText);//So that we can write to it again
-		
-		for i := 0 to datLen[2] DIV block do //Same for-loop from before
+		if datLen[2] > 0 then //if nothing in file, the program will continue without performing secondary check
 		begin
-			for j := 0 to block-1 do
-				comp[j] := data[2]^[i*block+j];
-			go := true;
-			diff[0] := 0;
-			for j := 0 to datLen[index[0]] do
+			data[2] := GetMem(datLen[2]); //get same amount from RAM
+			
+			repeat //put file into RAM
+				BlockRead(aFile2,data[2]^,datLen[2],returned)
+			until returned < datLen[2];
+			
+			block:=16; //Now ye's goin' ta observe in 16-byte blocks!
+			
+			Close(aFile2); //Close the file
+			Rewrite(aText);//So that we can write to it again
+			
+			for i := 0 to datLen[2] DIV block do //(Hopefully) The same for-loop from before
 			begin
-				if (comp[0] = data[index[0]]^[j]) and (j >= diff[0]) then
-					for k := 1 to block-1 do
-						if (comp[k] = data[index[0]]^[j+k]) then
-							go := false
-						else
-						begin
-							go := true;
-							diff[0] := j + 1;
-							break
-						end;
-				if not go then break
-				else if (j = datLen[0]) then
-					for k := 0 to block-1 do
-						write(aText,chr(comp[k]))
-			end
-		end;// Ends here!}
-		
-		Close(aText); //save
+				if i*block + block > datLen[index[1]] then
+					last := datLen[index[1]] - i*block
+				else last := block - 1;
+				for j := 0 to last do
+					comp[j] := data[2]^[i*block+j];
+				go := true;
+				diff[0] := 0;
+				for j := 0 to datLen[index[0]] do
+				begin
+					if (comp[0] = data[index[0]]^[j]) and (j >= diff[0]) then
+						for k := 1 to last do
+							if (comp[k] = data[index[0]]^[j+k]) then
+								go := false
+							else
+							begin
+								go := true;
+								diff[0] := j + 1;
+								break
+							end;
+					if not go then break
+					else if (j = datLen[index[0]]) then
+						for k := 0 to last do
+							write(aText,chr(comp[k]))
+				end
+			end;// Ends here!}
+			
+			Close(aText); //save
+		end
+		else Close(aFile2);
 		reset(aFile2, 1);
 		
 		//Report size (in bytes) of the output
-		writeln('Size of ''out'': ', FileSize(aFile2), ' bytes');
+		writeln('Size of output: ', FileSize(aFile2), ' bytes');
 		Close(aFile2);
 		
 		//Report length in time

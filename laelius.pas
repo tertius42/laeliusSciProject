@@ -19,113 +19,255 @@
 	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 	MA 02110-1301, USA.
 	
-	Purpose: Scan a file and see if it is (or isn't) malicious.
+	Purpose: Scan a file and see if it has (or hasn't) been maliciously modified.
 }
 
 
 program laelius;
 {$mode objfpc}
 
-uses crt,sysutils;
-type
-	dataContainer = array [0..0] of byte;
-const
-	version = '0.1.1';
+uses crt, sysutils, process, math;
 var
-	data: ^dataContainer;
-	i, datLen, filLen, returned: longint;
-	dir, name: string;
-	isUnix, isGreat: boolean;
-	aFile: file;
+	exe: TProcess;
+	//i: byte;
+	dir, name, little: String;
+	newSize, oldSize, diffSize, comparison, margin: double;
+	exboo, check: boolean;
+	separator: char;
 	aText: text;
+	sess: File;
+
+{ String := hexName(hName);
+* Purpose: Returns a string that is the conversion of the input into hexadecimal.
+* 	It watches for OS-specific directory separators and separates the hexadecimal accordingly.
+*}
+function hexName(hName: String): String;
+var
+	hi,hj: byte; //counters
+	hSum,hLeft: word; //sums for keeping track of numbers
+	hPow: byte; //power of the current digit
+	hBuf: char; //buffer character
+begin
+	hSum:=0; //initializations
+	hi:=0;
+	hexName:='';
+	repeat
+		inc(hi); //increment counter
+		{$IFDEF WINDOWS} //if a separator or line ending
+		if ((Copy(hName,hi,1) = '\') or (Copy(hName,hi,1) = '')) and (hSum <> 0) then
+		{$ENDIF WINDOWS}
+		{$IFDEF UNIX}
+		if ((Copy(hName,hi,1) = '/') or (Copy(hName,hi,1) = '')) and (hSum <> 0) then
+		{$ENDIF UNIX}
+		begin //convert to hexadecimal
+			hLeft:=hSum; //hLeft is hSum in the beginning
+			hPow:=0;//initialization
+			
+			repeat
+				inc(hPow) //get maximum power
+			until intPower(16,hPow) > hLeft;
+			
+			repeat
+				dec(hPow); //decrease the working power as the digit goes to zero
+				hj := 0;
+				repeat //get digit
+					inc(hj)
+				until intPower(16,hPow) * hj > hLeft;
+				
+				dec(hj); //decrement counter for over-counting in the last repeat
+				
+				if hj > 9 then //convert to character
+					hBuf:=Chr(hj - 10 + 65)
+				else hBuf := Chr(hj + 48);
+				
+				hexName:=hexName + hBuf; //add buffer to output
+				
+				dec(hLeft,Round(intPower(16,hPow) * hj)) //decrease the hLeft by much the digit took
+				
+			until (hLeft = 0) and (hPow = 0); //repeat until there is nothing left of hSum; power should also be zero
+			hSum:=0
+		end
+		else
+			inc(hSum,Ord(Copy(hName,hi,1)[1]))//get sum by increasing by the byte value of the character{;
+		//write(hSum,' ');//}
+	until hi > Length(hName) //until the string is ended
+end;
+
 BEGIN
-	clrscr;//clear the terminal
+	dir:=GetCurrentDir; //get directory
 	
-	isGreat := true;
+	{$IFDEF UNIX} //and add a separator to the end
+	dir := dir + '/';
+	{$ENDIF UNIX}
+	{$IFDEF WINDOWS}
+	dir := dir + '\';
+	{$ENDIF WINDOWS}
 	
-	dir := getCurrentDir; //get directory and determine OS
-	if Copy(dir,1,1) = '/' then
-		isUnix := true
-	else isUnix := false;
-	
-	if isUnix then //add a slash at the end of the directory
-		dir := dir + '/'
-	else dir := dir + '\';
-	
-	writeln('Laelius Verison: ' + version); //Announce program and version
+	writeln('Laelius'); //announce program and GPL
   writeln('This program comes with ABSOLUTELY NO WARRANTY.');
 	writeln('This is free software, and you are welcome to redistribute it');
   writeln('under certain conditons.');
   
-  if ParamCount = 0 then
-  begin
-		write('Name (dir optional) of file: ');
-		readln(name)
-  end
-  else name := ParamStr(0);
-  
-  try
-		Assign(aFile, name);
-		Reset(aFile,1);
-  except
-		on E: EInOutError do
-		begin
-			writeln('Error. details: ' + E.ClassName + ':' + E.Message);
-			isGreat := false //don't use the rest of the program if this is false.
-		end
-  end;
-  
-  if isGreat then //pretty much the rest of the project will be inside of this conditional
-  begin
-		datLen := FileSize(aFile);
-		writeln(datLen);
-		if datLen > 536870912 then //half a GiB is too much!
-			datLen := 536870912;
+  repeat //file in question comes from parameters
 		
-		filLen := FileSize(aFile);
+		if ParamCount < 1 then
+		begin
+			writeln('Usage: laelius <file>');
+			exit
+		end
+		else name := paramStr(1); //get file name from parameter
+		
+		{writeln('ESC to exit, or');
+		writeln('Press any key to continue...');
+		if readkey = #27 then
+			exit;}
+		
+		{$IFDEF UNIX} //determine separators in OS
+		separator:='/';
+		{$ENDIF UNIX}
+		{$IFDEF WINDOWS}
+		separator:='\';
+		{$ENDIF WINDOWS}
+		
+		exboo := false; //never exits, apparently
+		
+		little := hexName(name); //little version of file name (hexadecimal name!)
+		
+		Assign(aText,dir + little + separator + '.lae');//.lae file designates existence (Laelius Exists)
+		
+		check := true; //initialization
 		
 		try
-			data := GetMem(datLen);
-		except
-			on E: EAccessViolation do
-				writeln('Error. details: ' + E.ClassName + ':' + E.Message)
+			Reset(aText); //try to open the file
+			Close(aText); //will close if it exists
+		except 
+			on E: Exception do 
+				if (E.ClassName = 'EInOutError') and (E.Message = 'File not found') then //file does not exist
+				begin
+					Mkdir(dir + little); //if the file doesn't exist, the directory doesn't exist
+					check := false //which means this is an initialization session for the file in question
+				end
+				else
+				begin
+					writeln(E.ClassName + ' : ' + E.Message); //otherwise, system got a serious error
+					exit //will exit
+				end
 		end;
 		
-		try					//for now, we definitely want another file
-			if datLen < 0 then //okay to use RAM if datLen is less than .5 GiB
-				repeat
-					BlockRead(aFile,data^,datLen,returned)//read
-				until returned < datLen//until data read is less than data per BlockRead
-			else
+		if not check then //if file not determined before...
+		begin
+			Rewrite(aText); //create the .lae file
+			Close(aText);
+			
+			exe := TProcess.create(nil); //create a new TProcess object
+			
+			{$IFDEF WINDOWS}
+			exe.Executable:='./sign.exe';
+			{$ENDIF WINDOWS}
+			{$IFDEF UNIX}
+			exe.Executable:='./sign';
+			{$ENDIF UNIX}
+			
+			exe.Options := exe.Options + [poWaitOnExit];
+			
+			exe.Parameters.add(name); //parameters: sign <name of file> [<output file>]
+			exe.Parameters.add(dir + little + separator + little + '.las'); //.las = Laelius Signature
+			
+			exe.Execute; //this will create a signature of the file in question for the first time
+			
+		end
+		else
+		begin //assume the files already exist 
+			
+			exe := TProcess.create(nil);//create a signature of the file that exists now
+			
+			{$IFDEF WINDOWS}
+			exe.Executable:='./sign.exe';
+			{$ENDIF WINDOWS}
+			{$IFDEF UNIX}
+			exe.Executable:='./sign';
+			{$ENDIF UNIX}
+			
+			exe.Options := exe.Options + [poWaitOnExit]; //wait on exit (don't get ahead of yourself!)
+			
+			exe.Parameters.add(name); //parameters: sign <name of file> [<output file>]
+			exe.Parameters.add(dir + little + separator + little + '.lan'); //.lan = Laelius New
+			
+			exe.Execute; //run
+			
+			exe := TProcess.create(nil); //Compare the signatures and output to directory
+			
+			{$IFDEF WINDOWS}
+			exe.Executable:='./compare.exe';
+			{$ENDIF WINDOWS}
+			{$IFDEF UNIX}
+			exe.Executable:='./compare';
+			{$ENDIF UNIX}
+			
+			exe.Options := exe.Options + [poWaitOnExit];
+			
+			//Parameters: compare <file 1> <file 2> [<output file>]
+			exe.Parameters.add(dir + little + separator + little + '.las'); //order is not specific
+			exe.Parameters.add(dir + little + separator + little + '.lan');
+			exe.Parameters.add(dir + little + separator + 'out'); //output must be in the end, though!
+			
+			exe.Execute; //run
+			
+			//next three blocks gets the output file sizes of each of the files
+			Assign(sess, dir + little + separator + 'out'); //output from compare
+			Reset(sess,1);
+			diffSize := FileSize(sess);
+			Close(sess);
+			
+			Assign(sess, dir + little + separator + little + '.las'); //output from old signature
+			Reset(sess,1);
+			oldSize := FileSize(sess);
+			Close(sess);
+			
+			Assign(sess, dir + little + separator + little + '.lan'); //output from new signature
+			Reset(sess,1);
+			newSize := FileSize(sess);
+			Close(sess);
+			
+			comparison := abs(newSize - oldSize);
+			margin := 0.05 * diffSize; //margin of error (5%)
+			
+			//if Change in file sizes are about equal to the Compare output
+			//or Compare output is the same size as either file
+			if ((comparison < diffSize + margin) and (comparison > diffSize - margin)) or ((diffSize < newSize * 0.05 + newSize) and (diffSize > newSize - newSize * 0.05)) or ((diffSize < oldSize * 0.05 + oldSize) and (diffSize > oldSize - oldSize * 0.05)) then
 			begin
-				Assign(aText,'out'); //we need to store the (large) file into a buffer on the hard disk
-				Rewrite(aText); 
-				
-				repeat
-					BlockRead(aFile,data^,datLen,returned);
-					for i := 0 to returned do
-						write(aText, chr(data^[i]))
-				until returned < datLen;
-				
-				Close(aText)
+				writeln(TimeToStr(Time));//report time of detection
+				beep;//system bell (Windows only???)
+				writeln('WARNING: Tracked file sizes and comparitive file size indicate a problem!'); //report
+				writeln('File location: ' + name); //file in question 
+				writeln('Press any key to continue...');//readkey to continue program execution
+				readkey;
+				writeln
 			end
-		except
-			on E: EInOutError do //errors
-				writeln('Error. details: ' + E.ClassName + ':' + E.Message);
-			on E: EAccessViolation do
-				writeln('Error. details: ' + E.ClassName + ':' + E.Message)
-		end;
+			else//if okay, then
+			begin
+				exe := TProcess.create(nil); //get a new signature of what exists now
+				
+				{$IFDEF WINDOWS}
+				exe.Executable:='./sign.exe';
+				{$ENDIF WINDOWS}
+				{$IFDEF UNIX}
+				exe.Executable:='./sign';
+				{$ENDIF UNIX}
+				
+				exe.Options := exe.Options + [poWaitOnExit];
+				
+				exe.Parameters.add(name); //and use the old .las as the new signature
+				exe.Parameters.add(dir + little + separator + little + '.las');
+				
+				exe.Execute
+			end;
+			
+			//30 sec delay between ticks
+			delay(30000)
+			
+		end
 		
-		Close(aFile);
-		
-		//for debugging and seeing if it worked...
-		{for i := 0 to filLen do
-			write(chr(data^[i]))}
-		
-		//Just a fun-fact, Length(data^) returns 1, so we have to keep track of its length with datLen
-		
-		
-		
-  end
-  
+	until exboo //never exits, by the way: Kill the process, ALT+F4, or program in a way to exit the program (Free Pascal)
+	
 END.

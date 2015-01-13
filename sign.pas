@@ -33,7 +33,7 @@ type
 	dataContainer = array [0..0] of byte; //almost a static array!
 var
 	i: longword;
-	dir, name: String;
+	dir, name, result: String;
 	data: ^dataContainer;
 	datLen,returned: longword;
 	aFile: file;
@@ -123,27 +123,22 @@ BEGIN
 	writeln('This is free software, and you are welcome to redistribute it');
   writeln('under certain conditons.');
 	
-	if paramCount <> 1 then //if it got odd input
+	if (paramCount > 2) or (paramCount < 1) then //if it got odd input
 	begin
 		write('File: '); //directly prompt for a file
 		readln(name);
 	end
 	else //get filename from parameter
+	begin
 		name:= paramStr(1);
+		result:= paramStr(2);
+	end;
 	
 	//Important: Let the user know that the program is grinding!
 	writeln('Working...');
 	
 	//Get an initial time value
 	init:=TimeStampToMSecs(DateTimeToTimeStamp(Time));
-	
-	{$IFDEF UNIX}
-	if Copy(name,1,1) <> '/' then
-	{$ENDIF UNIX}
-	{$IFDEF WINDOWS}
-	if Copy(name,3,1) <> '\' then
-	{$ENDIF WINDOWS}
-		name := dir + name; //correct if it only got a name
 	
 	go := true; //initialize
 	
@@ -175,15 +170,32 @@ BEGIN
 	
 	i:=0;
 	
-	Assign(aText,name + '.sig'); //output files are as follows: <directory>.sig
-	
-	try //rewrite a new file with provisions for errors
-		Rewrite(aText);
-	except
-		on E: Exception do
-		begin
-			writeln(E.Classname + ': ' + E.Message);
-			go := false
+	if paramCount = 2 then
+	begin
+		Assign(aText,result); //output file
+
+		try //rewrite a new file with provisions for errors
+			Rewrite(aText);
+		except
+			on E: Exception do
+			begin
+				writeln(E.Classname + ': ' + E.Message);
+				go := false
+			end
+		end
+	end
+	else
+	begin
+		Assign(aText,name + '.sig'); //output file
+
+		try //rewrite a new file with provisions for errors
+			Rewrite(aText);
+		except
+			on E: Exception do
+			begin
+				writeln(E.Classname + ': ' + E.Message);
+				go := false
+			end
 		end
 	end;
 	
@@ -196,7 +208,7 @@ BEGIN
 	
 	Close(aText);
 	
-	//for file size (more or less debug info)
+	{//for file size (more or less debug info)
 	Assign(aFile,name + '.sig');
 	
 	try
@@ -212,10 +224,10 @@ BEGIN
 	//write to stdout
 	writeln('Size of ' + name + '.sig: ', FileSize(aFile));
 	
+	Close(aFile);//}
+	
 	//Report the time in seconds how long it took to complete
 	writeln('Took ', ((TimeStampToMSecs(DateTimeToTimeStamp(Time)) - init) / 1000):0:3, ' seconds');
-	
-	Close(aFile);
 	
 	finish: //THIS STAYS HERE AT THE END!!!!
 	writeln('Done!') //Annouce that the program has indeed finished

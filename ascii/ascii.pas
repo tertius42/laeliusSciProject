@@ -32,6 +32,14 @@ BEGIN
 	write(aText,chr(i));
 	repeat
 		i:=i+1;
+		
+		if Chr(i) = 'A' then
+		begin
+			writeln(aText);
+			writeln(aText,i);
+			writeln(aText);
+		end;
+		
 		write(aText,chr(i))
 	until i = 255;
 	Close(aText);
